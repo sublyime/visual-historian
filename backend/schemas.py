@@ -1,20 +1,18 @@
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, Dict, Any
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 class DataSourceBase(BaseModel):
     name: str
     source_type: str
-    config: Optional[dict] = {}
+    config: Optional[Dict[str, Any]] = {}
 
 class DataSourceCreate(DataSourceBase):
     pass
 
 class DataSource(DataSourceBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class DataPointBase(BaseModel):
     value: float
@@ -26,6 +24,4 @@ class DataPointCreate(DataPointBase):
 class DataPoint(DataPointBase):
     id: int
     timestamp: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
