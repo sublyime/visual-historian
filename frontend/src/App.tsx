@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Container, Typography, List, ListItem, ListItemText, ListItemButton, CircularProgress, Alert, Paper, Grid2 as Grid } from '@mui/material';
+import { Container, Typography, List, ListItem, ListItemText, ListItemButton, CircularProgress, Alert, Paper, Box } from '@mui/material';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -52,7 +52,7 @@ interface DataSource {
 const App: React.FC = () => {
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSourceId, setSelectedSourceId] = useState<number | null>(null);
   const [selectedSource, setSelectedSource] = useState<DataSource | null>(null);
@@ -70,6 +70,7 @@ const App: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchDataSources();
   }, []);
 
@@ -87,6 +88,7 @@ const App: React.FC = () => {
           console.error(err);
         }
       };
+
       fetchDataPoints();
     }
   }, [selectedSourceId, dataSources]);
@@ -95,7 +97,7 @@ const App: React.FC = () => {
     setSelectedSourceId(source.id);
     setError(null); // Clear any previous errors
   };
-  
+
   const chartData = {
     labels: dataPoints.map(dp => new Date(dp.timestamp).toLocaleString()),
     datasets: [
@@ -139,24 +141,32 @@ const App: React.FC = () => {
   };
 
   // Filter sources that have valid coordinates for map display
-  const sourcesWithCoords = dataSources.filter(source => 
-    source.config && 
-    typeof source.config.latitude === 'number' && 
+  const sourcesWithCoords = dataSources.filter(source =>
+    source.config &&
+    typeof source.config.latitude === 'number' &&
     typeof source.config.longitude === 'number' &&
     !isNaN(source.config.latitude) &&
     !isNaN(source.config.longitude)
   );
-  
+
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <Typography variant="h3" component="h1" gutterBottom align="center">
         Visual Data Historian
       </Typography>
-      
-      <Grid container spacing={3}>
-        <Grid xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 2, height: '500px', overflowY: 'auto' }}>
-            <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', md: 'row' }, 
+        gap: 3 
+      }}>
+        {/* Left Panel - Data Sources */}
+        <Box sx={{ 
+          flex: { md: '0 0 33%' },
+          width: { xs: '100%', md: 'auto' }
+        }}>
+          <Paper elevation={3} sx={{ p: 2, height: 'fit-content' }}>
+            <Typography variant="h5" gutterBottom>
               Connected Data Sources
             </Typography>
             {loading ? (
@@ -164,7 +174,9 @@ const App: React.FC = () => {
             ) : error && dataSources.length === 0 ? (
               <Alert severity="error">{error}</Alert>
             ) : dataSources.length === 0 ? (
-              <Alert severity="info">No data sources found. Add some data sources to get started.</Alert>
+              <Typography>
+                No data sources found. Add some data sources to get started.
+              </Typography>
             ) : (
               <List>
                 {dataSources.map((source) => (
@@ -197,51 +209,57 @@ const App: React.FC = () => {
               </List>
             )}
           </Paper>
-        </Grid>
-        
-        <Grid xs={12} md={8}>
-          <Paper elevation={3} sx={{ p: 2, height: '500px' }}>
-            <Typography variant="h5" component="h2" sx={{ mb: 2, textAlign: 'center' }}>
+        </Box>
+
+        {/* Right Panel - Map and Chart */}
+        <Box sx={{ 
+          flex: { md: '1 1 67%' },
+          width: { xs: '100%', md: 'auto' },
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3
+        }}>
+          {/* Map Section */}
+          <Paper elevation={3} sx={{ p: 2 }}>
+            <Typography variant="h5" gutterBottom>
               Data Source Map
             </Typography>
             {sourcesWithCoords.length === 0 ? (
-              <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography>
                 No data sources with valid coordinates found. Add latitude and longitude to your data source config to see them on the map.
-              </Alert>
+              </Typography>
             ) : (
-              <MapContainer 
-                center={[30.0, -95.0]} 
-                zoom={6} 
-                scrollWheelZoom={true} 
-                style={{ height: '400px', width: '100%', borderRadius: '8px' }}
+              <MapContainer
+                center={[sourcesWithCoords[0].config.latitude, sourcesWithCoords[0].config.longitude]}
+                zoom={10}
+                style={{ height: '400px', width: '100%' }}
               >
                 <TileLayer
-                  attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
                 {sourcesWithCoords.map(source => (
-                  <Marker 
-                    key={source.id} 
+                  <Marker
+                    key={source.id}
                     position={[source.config.latitude, source.config.longitude]}
                   >
                     <Popup>
                       <div>
                         <strong>{source.name}</strong><br />
-                        <strong>Type:</strong> {source.source_type}<br />
-                        <strong>ID:</strong> {source.id}<br />
-                        <strong>Coordinates:</strong> [{source.config.latitude}, {source.config.longitude}]
+                        Type: {source.source_type}<br />
+                        ID: {source.id}<br />
+                        Coordinates: [{source.config.latitude}, {source.config.longitude}]
                         {Object.keys(source.config).length > 2 && (
                           <>
-                            <br />
-                            <strong>Config:</strong>
-                            <pre style={{ fontSize: '10px', marginTop: '4px' }}>
+                            <br />Config:<br />
+                            <pre>
                               {JSON.stringify(
                                 Object.fromEntries(
                                   Object.entries(source.config).filter(
                                     ([key]) => !['latitude', 'longitude'].includes(key)
                                   )
-                                ), 
-                                null, 
+                                ),
+                                null,
                                 2
                               )}
                             </pre>
@@ -254,29 +272,28 @@ const App: React.FC = () => {
               </MapContainer>
             )}
           </Paper>
-        </Grid>
 
-        <Grid xs={12}>
-          <Paper elevation={3} sx={{ p: 2, minHeight: '400px' }}>
-            <Typography variant="h5" component="h2" sx={{ mb: 2, textAlign: 'center' }}>
+          {/* Chart Section */}
+          <Paper elevation={3} sx={{ p: 2 }}>
+            <Typography variant="h5" gutterBottom>
               Time-Series Data Visualization
             </Typography>
             {selectedSourceId === null ? (
-              <Alert severity="info">
+              <Typography>
                 Select a data source from the list on the left to view its time-series data.
-              </Alert>
+              </Typography>
             ) : dataPoints.length === 0 ? (
-              <Alert severity="warning">
+              <Typography>
                 No data points found for the selected source "{selectedSource?.name}".
-              </Alert>
+              </Typography>
             ) : (
-              <div style={{ height: '300px', marginTop: '16px' }}>
+              <Box sx={{ height: '400px' }}>
                 <Line data={chartData} options={chartOptions} />
-              </div>
+              </Box>
             )}
           </Paper>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Container>
   );
 };
